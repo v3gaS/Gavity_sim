@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spacetime Curvature Simulator</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="container">
+        <div id="info">
+            <h1>Spacetime Curvature Simulator</h1>
+            <p>Demonstrates how mass curves spacetime according to general relativity.</p>
+            <div id="controls">
+                <button id="startGravity">Start Gravity</button>
+                <button id="resetSimulation">Reset Simulation</button>
+                <button id="toggleLightPaths">Show Light Paths</button>
+                <button id="toggleEducation" class="education-btn">Show Explanations</button>
+                <p id="status">Gravity simulation paused</p>
+            </div>
+        </div>
+        <div id="canvas-container"></div>
+        
+        <!-- Educational Overlay -->
+        <div id="education-overlay" class="hidden">
+            <div class="tooltip" data-target="grid">
+                <h3>Spacetime Grid</h3>
+                <p>The grid represents spacetime fabric. In Einstein's theory, space and time are interconnected, forming a four-dimensional "fabric" that can be warped by mass.</p>
+            </div>
+            
+            <div class="tooltip" data-target="orange-sphere">
+                <h3>Mass and Gravity</h3>
+                <p>The orange sphere (mass: 92) creates the deepest curve in spacetime. According to Einstein, massive objects don't "pull" other objects - they curve the spacetime around them, and this curvature affects how other objects move.</p>
+            </div>
+            
+            <div class="tooltip" data-target="grid-deformation">
+                <h3>Spacetime Curvature</h3>
+                <p>The deformation of the grid shows how mass curves spacetime. The greater the mass, the deeper the "well". This is why more massive objects have stronger gravitational effects.</p>
+            </div>
+            
+            <div class="tooltip" data-target="gravity-simulation">
+                <h3>Orbital Motion</h3>
+                <p>When gravity simulation is active, objects follow curved paths. In reality, objects follow the straightest possible path through curved spacetime - what we perceive as orbital motion.</p>
+            </div>
+            
+            <div class="tooltip" data-target="mass-controls">
+                <h3>Mass and Position Controls</h3>
+                <p>Adjust these values to see how changes in mass and position affect spacetime curvature. Greater mass creates deeper curves, while position determines where the curvature occurs.</p>
+            </div>
+            
+            <div class="tooltip" data-target="light-paths">
+                <h3>Light Path Bending</h3>
+                <p>Light always follows the shortest path through spacetime. When spacetime is curved by mass, light paths appear to bend - a phenomenon called gravitational lensing. This effect was first confirmed during a solar eclipse in 1919, providing evidence for Einstein's theory.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dat.gui@0.7.7/build/dat.gui.min.js"></script>
+    <script src="js/simulator.js"></script>
+</body>
+</html> 
