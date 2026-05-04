@@ -1,54 +1,76 @@
-# Spacetime Curvature Simulator: Physics Concepts
+# Physics concepts and how this app represents them
 
-This simulation provides an interactive visualization of key concepts from Einstein's General Theory of Relativity, one of the most profound and elegant theories in physics.
+**App:** [Gavity_sim](https://github.com/v3gaS/Gavity_sim) — an interactive **WebGL** visualization.  
+This page connects **general relativity (GR) intuition** to **what the program actually computes**. For setup and controls, see [README.md](README.md).
 
-## Core Concepts Visualized
+---
 
-### 1. Spacetime as a Fabric
-The grid represents spacetime as a unified entity. While real spacetime is four-dimensional (three spatial dimensions plus time), we visualize it as a two-dimensional surface for clarity. In Einstein's view, space and time are not separate entities but components of a single "spacetime" continuum.
+## 1. Spacetime as a fabric
 
-### 2. Mass Curves Spacetime
-The colored spheres (Orange, Green, Red) represent masses that cause the grid to deform. This deformation is governed by Einstein's field equations, which describe how matter and energy affect the geometry of spacetime. The greater the mass (adjustable via controls), the deeper the curvature.
+In GR, space and time form a single four-dimensional **spacetime**. This demo shows a **2D surface** (a horizontal sheet) deformed in the vertical direction. That is a **popular metaphor** (“rubber sheet”), not a literal plot of a relativistic spacetime slice.
 
-### 3. Gravity as Geometry
-In Newtonian physics, gravity is a force that acts at a distance. Einstein reimagined gravity as the result of mass bending spacetime. Objects follow the natural curvature of spacetime, which we experience as gravity. This explains why all objects, regardless of mass, fall at the same rate in a vacuum.
+**In the app:** vertex height and color follow a **Newtonian-style** potential built from the same **μ = GM** parameters that drive the particle motion. The sheet **moves with the bodies** and stays easy to read.
 
-### 4. Orbital Motion
-When you activate gravity, the spheres orbit in curved paths. In reality, objects follow geodesics (the equivalent of "straight lines" in curved spacetime). This explains planetary orbits without requiring a mysterious "action at a distance" force.
+---
 
-### 5. Mass-Curvature Relationship
-By adjusting the mass values, you can see how larger masses create deeper "gravity wells" in spacetime. This relationship is proportional - double the mass creates twice the curvature at a given distance.
+## 2. Mass and curvature
 
-### 6. Gravitational Lensing
-The light path visualization shows how light rays bend around massive objects. This demonstrates one of Einstein's most startling predictions: that gravity affects the path of light. This phenomenon was first confirmed during the 1919 solar eclipse by Arthur Eddington, providing crucial early evidence for general relativity.
+In GR, **mass–energy** curves spacetime via Einstein’s field equations. Larger mass generally means **stronger** effects on clocks, trajectories, and light.
 
-## Interactive Features
+**In the app:** each colored sphere has a gravitational parameter **μ**. Larger **μ** deepens the sheet metaphor and strengthens **Newtonian** attraction on other bodies. The field equations of GR are **not** solved numerically here.
 
-The simulation allows you to explore these concepts through:
+---
 
-- **Mass Adjustment**: Change sphere masses to see proportional effects on spacetime curvature
-- **Position Control**: Move spheres and observe immediate effects on the surrounding spacetime
-- **Gravity Simulation**: Visualize orbital motion in curved spacetime
-- **Light Path Visualization**: Observe how light bends around massive objects
-- **Educational Tooltips**: Learn about specific aspects of general relativity as you interact
+## 3. Gravity as geometry vs Newtonian force
 
-## Physical Simplifications
+GR: bodies try to follow **geodesics** (“straightest” paths) in curved spacetime.  
+Newton: bodies accelerate under a **force** that falls off with distance.
 
-For educational clarity, this simulation uses several simplifications:
+**In the app:** when you press **Start Gravity**, the spheres follow **mutual Newtonian gravity** (velocity Verlet + softening). That gives believable **orbits** and **chaos** for a toy system, while the **sheet** still suggests the geometric picture for learners.
 
-1. **Dimensionality**: Real spacetime has four dimensions, but we visualize only two spatial dimensions plus deformation
-2. **Static Representation**: Real spacetime deformation propagates at the speed of light
-3. **Simplified Calculations**: We use approximations rather than solving Einstein's complete field equations
-4. **Scale**: We've adjusted the strength of effects for visual clarity
+---
 
-## Historical Context
+## 4. Orbital motion
 
-Einstein published his General Theory of Relativity in 1915, revolutionizing our understanding of gravity. The theory has been confirmed by numerous experimental tests, including:
+In nature, planets and satellites follow paths determined by the full metric (GR) or, to high accuracy in the solar system, by Newtonian gravity plus small corrections.
 
-- Gravitational lensing observations
-- Gravitational waves detected by LIGO
-- Mercury's orbital precession
-- GPS satellite time dilation corrections
-- Frame-dragging measured by Gravity Probe B
+**In the app:** orbits are **Newtonian N-body** (with softened point masses). **Presets** such as Earth–Moon or Sun–Jupiter use **GM ratios** from **DE440**-style data ([`js/physics_constants.js`](js/physics_constants.js)), scaled to fit the scene—not a substitute for a full ephemeris integrator.
 
-This simulation aims to make Einstein's abstract concepts more tangible and interactive, helping to build intuition for one of physics' most beautiful theories.
+---
+
+## 5. Light and gravitational lensing
+
+GR predicts that light **bends** near mass (e.g. Eddington’s 1919 eclipse result). Lensing maps in astrophysics use relativistic optics; weak-field approximations are common.
+
+**In the app:** **light paths** integrate a **simple weak-field-style** bending model using **∇Φ** from the **μ** sources (RK4 in the horizontal plane). **Compact lens** mode uses only the **dominant** mass and applies a **2×** factor on the bend term as a **pedagogical** nod to the classic **factor-of-two** light deflection beyond naive Newtonian scraping—it is **not** a full **null geodesic** in Schwarzschild or Kerr.
+
+---
+
+## 6. Gravitational waves (GW150914 preset)
+
+**LIGO/Virgo/KAGRA** detect **strain** from merging compact objects; waveforms need **numerical relativity** near merger.
+
+**In the app:** the **GW150914 toy** preset uses **illustrative component masses** from the literature and runs a **Newtonian binary** for visual rhythm only. There is **no** waveform, **no** merger, **no** ringdown.
+
+---
+
+## 7. What you can explore in the UI
+
+- **Presets** (lil-gui): toy 3-body, Earth–Moon, Sun–Jupiter + tracer, GW-inspired binary.
+- **μ, x, z, vₓ, vᵧ** per body; **Δt**, **substeps**, **softening** for numerical stability.
+- **Sheet** depth/color gain; **bloom**; **ray mode** and **bend** strength.
+- **Energy** readout: monitors drift for the **μ-consistent** Newtonian energy expression (see [IMPLEMENTATION.md](IMPLEMENTATION.md)).
+
+---
+
+## 8. Historical and modern context
+
+GR (1915) has been tested by lensing, solar system tests, **gravitational waves** (e.g. GW150914), and more. This simulation is **not** a substitute for those measurements or professional tools; it is a **labeled**, **interactive** companion for building intuition.
+
+---
+
+## Further reading
+
+- [README.md](README.md) — install, controls, limitations.
+- [IMPLEMENTATION.md](IMPLEMENTATION.md) — equations and file map.
+- Repository: **https://github.com/v3gaS/Gavity_sim**

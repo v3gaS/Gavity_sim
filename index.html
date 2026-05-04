@@ -5,60 +5,65 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Spacetime Curvature Simulator</title>
     <link rel="stylesheet" href="styles.css">
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+        }
+    }
+    </script>
 </head>
 <body>
     <div id="container">
         <div id="info">
             <h1>Spacetime Curvature Simulator</h1>
-            <p>Demonstrates how mass curves spacetime according to general relativity.</p>
+            <p>Newtonian N-body integration, schematic spacetime sheet, and weak-field light rays (see README for model limits).</p>
             <div id="controls">
                 <button id="startGravity">Start Gravity</button>
                 <button id="resetSimulation">Reset Simulation</button>
                 <button id="toggleLightPaths">Show Light Paths</button>
                 <button id="toggleEducation" class="education-btn">Show Explanations</button>
                 <p id="status">Gravity simulation paused</p>
+                <p id="energy" class="energy-readout" aria-live="polite"></p>
             </div>
         </div>
         <div id="canvas-container"></div>
-        
-        <!-- Educational Overlay -->
+
         <div id="education-overlay" class="hidden">
             <div class="tooltip" data-target="grid">
-                <h3>Spacetime Grid</h3>
-                <p>The grid represents spacetime fabric. In Einstein's theory, space and time are interconnected, forming a four-dimensional "fabric" that can be warped by mass.</p>
+                <h3>Spacetime sheet</h3>
+                <p>The surface is a <strong>schematic</strong> embedding-style sheet: vertex height and color follow a Newtonian potential from the bodies’ μ = GM values. It is not a numerical solution of Einstein’s field equations.</p>
             </div>
-            
+
             <div class="tooltip" data-target="orange-sphere">
-                <h3>Mass and Gravity</h3>
-                <p>The orange sphere (mass: 92) creates the deepest curve in spacetime. According to Einstein, massive objects don't "pull" other objects - they curve the spacetime around them, and this curvature affects how other objects move.</p>
+                <h3>Mass and μ = GM</h3>
+                <p>Each sphere’s gravity is set by its gravitational parameter μ (GM). Presets use values consistent with JPL DE440 / NAIF <code>gm_de440.tpc</code>; toy mode uses unitless masses for exploration.</p>
             </div>
-            
+
             <div class="tooltip" data-target="grid-deformation">
-                <h3>Spacetime Curvature</h3>
-                <p>The deformation of the grid shows how mass curves spacetime. The greater the mass, the deeper the "well". This is why more massive objects have stronger gravitational effects.</p>
+                <h3>Curvature metaphor</h3>
+                <p>Deeper wells correspond to larger μ and stronger Newtonian acceleration. This matches the integrator that moves the spheres, while remaining an educational picture—not a GR metric plot.</p>
             </div>
-            
+
             <div class="tooltip" data-target="gravity-simulation">
-                <h3>Orbital Motion</h3>
-                <p>When gravity simulation is active, objects follow curved paths. In reality, objects follow the straightest possible path through curved spacetime - what we perceive as orbital motion.</p>
+                <h3>N-body trajectories</h3>
+                <p>With gravity running, bodies follow a <strong>velocity Verlet</strong> (symplectic) integrator with Plummer softening. Orbits are Newtonian; relativistic corrections are not included in the particle stepper.</p>
             </div>
-            
+
             <div class="tooltip" data-target="mass-controls">
-                <h3>Mass and Position Controls</h3>
-                <p>Adjust these values to see how changes in mass and position affect spacetime curvature. Greater mass creates deeper curves, while position determines where the curvature occurs.</p>
+                <h3>Presets and sliders</h3>
+                <p>Choose a preset (Earth–Moon, Sun–Jupiter + tracer, GW150914-inspired toy binary, or free toy three-body). Adjust μ, softening, timestep, ray mode, and bloom to explore stability and visuals.</p>
             </div>
-            
+
             <div class="tooltip" data-target="light-paths">
-                <h3>Light Path Bending</h3>
-                <p>Light always follows the shortest path through spacetime. When spacetime is curved by mass, light paths appear to bend - a phenomenon called gravitational lensing. This effect was first confirmed during a solar eclipse in 1919, providing evidence for Einstein's theory.</p>
+                <h3>Light paths</h3>
+                <p><strong>Weak-field multi-mass:</strong> rays integrate a first-order weak-field bending model using ∇Φ from all masses (RK4), then renormalize.</p>
+                <p><strong>Compact lens:</strong> uses only the most massive body and doubles the bending term—an educational stand-in for the factor-of-two light deflection beyond Newtonian scraping, not a full null geodesic in Kerr/Schwarzschild.</p>
             </div>
         </div>
     </div>
 
-    <!-- Scripts -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/dat.gui@0.7.7/build/dat.gui.min.js"></script>
-    <script src="js/simulator.js"></script>
+    <script type="module" src="js/simulator.js"></script>
 </body>
-</html> 
+</html>

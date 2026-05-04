@@ -1,274 +1,129 @@
-# Spacetime Curvature Simulator - Technical Implementation
+# Implementation notes
 
-This document describes the technical implementation details of the Spacetime Curvature Simulator, intended for developers who want to understand or contribute to the codebase.
+**Project:** [Gavity_sim](https://github.com/v3gaS/Gavity_sim) — browser N-body + schematic spacetime sheet + weak-field rays.
 
-## Project Structure
+This file is aimed at **developers** who maintain or extend the codebase. End users should start with [README.md](README.md).
 
-```
-spacetime-curvature-simulator/
-├── index.html           # Main HTML page with UI structure
-├── styles.css           # CSS styles for UI components
-├── js/
-│   └── simulator.js     # Core simulation logic and Three.js implementation
-├── README.md            # Project overview and usage instructions
-├── concept.md           # Physics concepts explanation
-└── IMPLEMENTATION.md    # This technical documentation
-```
+---
 
-## Technology Stack
+## Architecture
 
-- **Three.js**: 3D visualization library
-- **dat.GUI**: Interface controls for simulation parameters
-- **HTML5/CSS3**: Structure and styling
-- **Vanilla JavaScript**: Core simulation logic
-
-## Core Modules
-
-### 1. Scene Setup
-
-The scene is built using Three.js with the following components:
-
-```javascript
-function setupScene() {
-    scene = new THREE.Scene();
-    camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-    renderer = new THREE.WebGLRenderer({ antialias: true });
-    controls = new THREE.OrbitControls(camera, renderer.domElement);
-    
-    // Enhanced lighting setup with ambient and directional lights
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
-    const mainLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    const fillLight = new THREE.DirectionalLight(0xffffff, 0.4);
-    
-    // Add lights to scene
-    // Handle window resize
-}
+```mermaid
+flowchart TB
+    subgraph ui [UI]
+        HTML[index.html importmap]
+        GUI[lil-gui]
+    end
+    subgraph sim [Simulation]
+        NB[N-body velocity Verlet]
+        RAY[RK4 weak-field rays]
+    end
+    subgraph gfx [Graphics]
+        GRID[Shader wireframe grid]
+        BLOOM[UnrealBloomPass]
+    end
+    HTML --> NB
+    HTML --> GRID
+    GUI --> NB
+    GUI --> RAY
+    NB --> GRID
+    NB --> BLOOM
+    GRID --> BLOOM
 ```
 
-### 2. Spacetime Grid Representation
+---
 
-The spacetime grid is implemented as a highly segmented plane geometry that can deform to visualize spacetime curvature:
+## Files
 
-```javascript
-function createGrid() {
-    const wireframeGeometry = new THREE.PlaneGeometry(
-        GRID_SIZE, 
-        GRID_SIZE, 
-        GRID_SEGMENTS, 
-        GRID_SEGMENTS
-    );
-    
-    const wireframeMaterial = new THREE.MeshBasicMaterial({
-        color: 0xffffff,
-        wireframe: true,
-        transparent: false,
-        opacity: 1.0
-    });
-    
-    gridMesh = new THREE.Mesh(wireframeGeometry, wireframeMaterial);
-    gridMesh.rotation.x = -Math.PI / 2; // Rotate to horizontal
-    scene.add(gridMesh);
-}
-```
+| File | Role |
+|------|------|
+| [`index.html`](index.html) | Import map for `three@0.170.0`, layout, education overlay |
+| [`js/simulator.js`](js/simulator.js) | Scene, controls, composer, N-body, rays, trails, GUI |
+| [`js/physics_constants.js`](js/physics_constants.js) | `GM_SI`, preset factories, GW150914 illustrative constants |
 
-### 3. Mass Objects Implementation
+---
 
-Masses are represented by spheres with size proportional to their mass value (using cube root scaling for more intuitive visualization):
+## N-body integrator
 
-```javascript
-function createSpheres() {
-    masses.forEach((mass, index) => {
-        const sphereGeometry = new THREE.SphereGeometry(
-            Math.cbrt(mass.mass) * 0.15, 
-            32, 
-            32
-        );
-        
-        const sphereMaterial = new THREE.MeshPhongMaterial({
-            color: mass.color,
-            shininess: 80,
-            specular: 0x666666,
-            emissive: mass.color,
-            emissiveIntensity: 0.2
-        });
-        
-        const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-        sphere.position.set(mass.x, mass.y, mass.z);
-        sphere.userData.index = index;
-        
-        scene.add(sphere);
-        spheres.push(sphere);
-    });
-}
-```
+Each body carries position **r**, velocity **v**, and gravitational parameter **μ = GM** (same units as used in the force law).
 
-### 4. Spacetime Deformation Algorithm
+**Acceleration** (softened point-mass field):
 
-The core physics simulation is implemented in the `deformGrid()` function, which calculates how each point on the grid should be displaced based on the gravitational influence of each mass:
+\[
+\mathbf{a}_i = \sum_{j \neq i} \mu_j \frac{\mathbf{r}_j - \mathbf{r}_i}{\left( \|\mathbf{r}_j - \mathbf{r}_i\|^2 + \varepsilon^2 \right)^{3/2}}
+\]
 
-```javascript
-function deformGrid() {
-    // Get grid geometry vertices
-    const positions = gridMesh.geometry.attributes.position;
-    
-    // For each vertex in the grid
-    for (let i = 0; i < positions.count; i++) {
-        const x = positions.getX(i);
-        const z = positions.getZ(i);
-        let y = 0;
-        
-        // Calculate displacement from each mass
-        masses.forEach(mass => {
-            const dx = x - mass.x;
-            const dz = z - mass.z;
-            const distance2 = dx * dx + dz * dz + EPSILON;
-            
-            // Calculate displacement using inverse-square relationship
-            const displacement = -GRAVITY_STRENGTH * mass.mass / distance2;
-            y += displacement;
-        });
-        
-        // Update vertex position
-        positions.setY(i, y);
-    }
-    
-    // Tell Three.js to update the geometry
-    positions.needsUpdate = true;
-}
-```
+**Velocity Verlet** (substepped with user **Δt** and **substeps**):
 
-This algorithm:
-1. Accesses the vertex positions of the grid mesh
-2. For each vertex, calculates its displacement based on all masses
-3. Uses an inverse-square relationship (like gravitational force)
-4. Adds a small epsilon value to prevent division by zero
-5. Updates the grid geometry with new vertex positions
+1. \(\mathbf{v} \leftarrow \mathbf{v} + \tfrac{1}{2}\mathbf{a}\,\Delta t\)
+2. \(\mathbf{r} \leftarrow \mathbf{r} + \mathbf{v}\,\Delta t\)
+3. recompute \(\mathbf{a}\)
+4. \(\mathbf{v} \leftarrow \mathbf{v} + \tfrac{1}{2}\mathbf{a}\,\Delta t\)
 
-### 5. Gravity Simulation
+**Energy** (for drift monitoring; uses **μ** consistently with the acceleration above):
 
-The gravity simulation creates a simplified orbital motion for the mass objects:
+\[
+E = \sum_i \tfrac{1}{2}\mu_i \|\mathbf{v}_i\|^2 - \sum_{i<j} \frac{\mu_i \mu_j}{\sqrt{\|\mathbf{r}_i-\mathbf{r}_j\|^2 + \varepsilon^2}}
+\]
 
-```javascript
-function simulateGravity() {
-    const time = Date.now() * 0.001;
-    
-    masses.forEach((mass, index) => {
-        // Different radius and speed for each sphere
-        const radius = 2 + index * 2;
-        const speed = 0.5 - index * 0.1;
-        
-        // Circular orbital motion
-        mass.x = radius * Math.cos(time * speed);
-        mass.z = radius * Math.sin(time * speed);
-        
-        // Update sphere position
-        updateSpherePosition(index);
-    });
-}
-```
+On preset load and when starting integration, a **baseline** energy is stored; the HUD shows fractional drift.
 
-### 6. Light Path Visualization
+---
 
-The light path visualization demonstrates gravitational lensing by showing how light rays bend around massive objects:
+## Presets and scaling
 
-```javascript
-function createLightPaths() {
-    // Create light paths around the perimeter
-    for (let i = 0; i < LIGHT_PATH_COUNT; i++) {
-        const angle = (i / LIGHT_PATH_COUNT) * Math.PI * 2;
-        const startX = Math.cos(angle) * (GRID_SIZE / 2 - 1);
-        const startZ = Math.sin(angle) * (GRID_SIZE / 2 - 1);
-        
-        // Create path geometry
-        const points = [];
-        for (let j = 0; j < LIGHT_PATH_POINTS; j++) {
-            // Linearly interpolate across the grid
-            const t = j / (LIGHT_PATH_POINTS - 1);
-            const pathX = startX * (1 - t) + -startX * t;
-            const pathZ = startZ * (1 - t) + -startZ * t;
-            
-            // Calculate y-position (height) based on spacetime curvature
-            // Similar to deformGrid logic
-            let y = 0;
-            masses.forEach(mass => {
-                const dx = pathX - mass.x;
-                const dz = pathZ - mass.z;
-                const distance2 = dx * dx + dz * dz + EPSILON;
-                const displacement = -GRAVITY_STRENGTH * mass.mass / distance2;
-                y += displacement;
-            });
-            
-            // Add point to path (with slight elevation)
-            points.push(new THREE.Vector3(pathX, y + 0.1, pathZ));
-        }
-        
-        // Create visible line for the path
-        const geometry = new THREE.BufferGeometry().setFromPoints(points);
-        const material = new THREE.LineBasicMaterial({ color: 0x00ffff });
-        const line = new THREE.Line(geometry, material);
-        scene.add(line);
-        lightPaths.push(line);
-    }
-}
-```
+- **Toy three-body**: positions and velocities in scene units; **μ = mass × 0.55** (`TOY_MU_SCALE` in [`simulator.js`](js/simulator.js)).
+- **DE440-based presets** (Earth–Moon, Sun–Jupiter, GW toy): built in **dimensionless** coordinates with \(\sum \mu' = 1\) and separation 1, then mapped to the scene by a factor **S** (`separationScene`):
 
-## User Interface Implementation
+  - \(\mu_i^{\mathrm{scene}} = \mu_i' \, S^3\)
+  - \(\mathbf{r}^{\mathrm{scene}} = S \mathbf{r}'\), \(\mathbf{v}^{\mathrm{scene}} = S \mathbf{v}'\)
 
-The UI is implemented using dat.GUI for controls and HTML/CSS for informational elements:
+This keeps Keplerian timing consistent when the orbit is rescaled to fit the grid.
 
-```javascript
-function setupGUI() {
-    gui = new dat.GUI();
-    
-    // Create folders for each mass
-    masses.forEach((mass, index) => {
-        const folder = gui.addFolder(`Mass ${index + 1}`);
-        
-        // Add mass value controller
-        folder.add(mass, 'mass', 1, 100).name('Mass Value').onChange(() => {
-            updateSphereSize(index);
-            deformGrid();
-            updateLightPaths();
-        });
-        
-        // Add position controllers
-        folder.add(mass, 'x', -10, 10).name('X Position').onChange(() => {
-            updateSpherePosition(index);
-            deformGrid();
-            updateLightPaths();
-        });
-        
-        folder.add(mass, 'z', -10, 10).name('Z Position').onChange(() => {
-            updateSpherePosition(index);
-            deformGrid();
-            updateLightPaths();
-        });
-        
-        folder.open();
-    });
-}
-```
+---
 
-## Physics Simplifications
+## Rubber sheet (GPU)
 
-For educational and performance purposes, this simulator uses several simplifications:
+[`gridVertexShader`](js/simulator.js) displaces each vertex in **+Y** by a sum of **−k μ / r²** terms (same inverse-square family as the old CPU demo, with clamp). [`gridFragmentShader`](js/simulator.js) tints by a crude **potential** proxy. This remains a **metaphor**, not a numerical GR embedding.
 
-1. **2D vs 4D Spacetime**: Real spacetime is 4-dimensional, but we visualize using a 2D grid in 3D space
-2. **Simplified Gravity Formula**: The displacement calculation uses an inverse-square relationship that approximates gravitational effects visually but is not a complete implementation of Einstein's field equations
-3. **Simplified Orbital Motion**: Objects follow predetermined circular paths rather than being dynamically calculated based on the spacetime curvature
-4. **No Relativistic Effects**: Time dilation and length contraction are not modeled
+Uniforms pack up to **8** bodies as `vec4(x, y, z, μ)`.
 
-## Performance Optimizations
+---
 
-The most performance-intensive aspects have been optimized:
+## Light rays
 
-1. **Efficient Grid Updates**: Grid deformation calculations only run when parameters change or during gravity simulation
-2. **Optimized Distance Calculations**: Squared distances are used to avoid expensive square root operations
-3. **Appropriate Grid Density**: The segment count is balanced for visual quality and performance
+**Weak-field mode**: approximate bending using the **gradient of the Newtonian potential** generated by all masses (evaluation height **y ≈ 0.55** for the ray plane). State \((p_x, p_z, k_x, k_z)\) with affine step **dl**:
 
-## Future Development Considerations
+- \(\mathrm{d}\mathbf{p}/\mathrm{d}\lambda = \mathbf{k}\)
+- \(\mathrm{d}\mathbf{k}/\mathrm{d}\lambda = -s \,\nabla \Phi\) with user gain **s** (`rayBend`)
 
-1. **WebGL Shaders**: Move deformation calculations to GPU using vertex shaders
-2. **Physics Accuracy**: Implement more accurate gravitational equations
-3. **Dynamic Orbital Paths**: Calculate object trajectories based on spacetime curvature
-4. **Educational Elements**: Add more explanatory overlays and guided tutorials 
+**Compact lens mode**: only the **dominant-μ** body contributes to \(\nabla \Phi\), and the deflection term is multiplied by **2** (educational link to light deflection vs Newtonian).
+
+Integration: **RK4** per step, then **renormalize** \(\mathbf{k}\) to unit length in the **xz** plane.
+
+---
+
+## Post-processing
+
+- [`EffectComposer`](https://threejs.org/docs/#examples/en/postprocessing/EffectComposer) + [`RenderPass`](https://threejs.org/docs/#examples/en/postprocessing/RenderPass) + [`UnrealBloomPass`](https://threejs.org/docs/#examples/en/postprocessing/UnrealBloomPass)
+- Renderer: `ACESFilmicToneMapping`, `SRGBColorSpace`
+
+---
+
+## Performance
+
+- **High-res grid**: 56×56 segments (wireframe); **low-res**: 28×28.
+- Light paths: 24 rays × up to 140 segments, rebuilt when masses move (only while paths are visible).
+
+---
+
+## Browser requirements
+
+- WebGL 2–capable browser.
+- **HTTP(S) server** required (ES modules + local imports); see [README.md](README.md).
+
+---
+
+## Repository
+
+Source and issues: **https://github.com/v3gaS/Gavity_sim**
